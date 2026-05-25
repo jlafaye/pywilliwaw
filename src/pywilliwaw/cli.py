@@ -8,7 +8,7 @@ Commands (always available):
 
 Commands (when connected):
   disconnect            disconnect from current device
-  toggle                toggle fan on/off
+  fan                   toggle fan on/off
   speed <1-15>          set fan speed
   sweep <0|1>           enable or disable sweep
   sleep <minutes|off>   set/cancel sleep timer (1–1440 min)
@@ -214,12 +214,12 @@ async def repl() -> None:
         elif cmd == "disconnect":
             await cmd_disconnect()
 
-        elif cmd in ("toggle", "speed", "sweep", "sleep", "status"):
+        elif cmd in ("fan", "speed", "sweep", "sleep", "status"):
             if not connected:
                 print("Not connected. Use 'connect <name|#>' first.")
                 continue
             try:
-                if cmd == "toggle":
+                if cmd == "fan":
                     await fan.toggle()
                 elif cmd == "status":
                     print(f"fan={'on' if fan.fan else 'off'}  speed={fan.speed}  sweep={'on' if fan.sweep else 'off'}")

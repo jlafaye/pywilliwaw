@@ -127,7 +127,7 @@ williwaw@EC:92:6D:A1:2E:7F>
 |---|---|
 | `disconnect` | Disconnect from the current device |
 | `status` | Show current fan state (on/off, speed, sweep) |
-| `toggle` | Toggle the fan on or off |
+| `fan` | Toggle the fan on or off |
 | `speed <1-15>` | Set fan speed |
 | `sweep <0\|1>` | Disable (`0`) or enable (`1`) oscillation |
 | `sleep <minutes\|off>` | Set a sleep timer (1–1440 min); `sleep off` cancels it |
@@ -155,7 +155,7 @@ sleep timer → 30 min
 williwaw@EC:92:6D:A1:2E:7F> status
 fan=on  speed=7  sweep=on
 
-williwaw@EC:92:6D:A1:2E:7F> toggle
+williwaw@EC:92:6D:A1:2E:7F> fan
 williwaw@EC:92:6D:A1:2E:7F> status
 fan=off  speed=7  sweep=on
 
