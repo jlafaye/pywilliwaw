@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pywilliwaw"
+version = "0.1.0"
+description = "A Python library and CLI to control the Williwaw fan over BLE, reverse-engineered from captured Bluetooth traffic."
+requires-python = ">=3.10"
+dependencies = [
+    "bleak>=0.22",
+]
+
+[project.scripts]
+williwaw-cli = "pywilliwaw.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
