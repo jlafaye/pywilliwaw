@@ -58,6 +58,12 @@ async def _sleep_worker(minutes: int) -> None:
             print(f"\n[sleep] error: {e}")
 
 
+def _set_sleep(minutes: int) -> None:
+    global _sleep_task
+    _cancel_sleep()
+    _sleep_task = asyncio.create_task(_sleep_worker(minutes))
+
+
 def _cancel_sleep() -> bool:
     global _sleep_task
     if _sleep_task and not _sleep_task.done():
@@ -78,32 +84,40 @@ async def _try_reconnect() -> None:
     names = ", ".join(e["name"] for e in known)
     print(f"Looking for known fan(s) ({names})…", end=" ", flush=True)
 
-    async def connect_one(entry: dict) -> Williwaw | None:
+    # Phase 1: scan for all known devices in parallel (safe to cancel).
+    async def scan_one(entry: dict):
         try:
-            device = await find_by_address(entry["address"], timeout=3.0)
-            if device is None:
-                return None
-            f = Williwaw(device)
-            await f.connect()
-            return f
+            return await find_by_address(entry["address"], timeout=3.0)
         except Exception:
             return None
 
-    tasks = [asyncio.create_task(connect_one(e)) for e in known]
-    done, pending = await asyncio.wait(tasks, timeout=3.0, return_when=asyncio.FIRST_COMPLETED)
+    scan_tasks = [asyncio.create_task(scan_one(e)) for e in known]
+    done, pending = await asyncio.wait(scan_tasks, timeout=3.0, return_when=asyncio.FIRST_COMPLETED)
     for t in pending:
         t.cancel()
 
+    device = None
     for t in done:
         try:
             result = t.result()
             if result is not None:
-                fan = result
+                device = result
                 break
         except Exception:
             pass
 
-    print(f"connected ({fan.name})" if fan else "not found, use 'connect'")
+    if device is None:
+        print("not found, use 'connect'")
+        return
+
+    # Phase 2: connect to the found device — never cancelled mid-flight.
+    try:
+        f = Williwaw(device)
+        await f.connect()
+        fan = f
+        print(f"connected ({fan.name})")
+    except Exception:
+        print("found but could not connect, use 'connect'")
 
 
 # ── device commands ────────────────────────────────────────────────────────────
@@ -234,9 +248,8 @@ async def repl() -> None:
                         else:
                             print("no active sleep timer")
                     elif args[0].isdigit() and 1 <= int(args[0]) <= 1440:
-                        _cancel_sleep()
                         minutes = int(args[0])
-                        _sleep_task = asyncio.create_task(_sleep_worker(minutes))
+                        _set_sleep(minutes)
                         print(f"sleep timer → {minutes} min")
                     else:
                         print("usage: sleep <1-1440|off>")
