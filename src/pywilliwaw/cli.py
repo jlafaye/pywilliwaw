@@ -10,7 +10,7 @@ Commands (when connected):
   disconnect            disconnect from current device
   fan                   toggle fan on/off
   speed <1-15>          set fan speed
-  sweep <0|1>           enable or disable oscillation
+  oscillation <0|1>     enable or disable oscillation
   ospeed <1-3>          set oscillation speed (1=Low 2=Medium 3=High)
   center                return sweep head to center
   sleep <minutes|off>   hardware sleep timer: turn off after N min (1–1440)
@@ -66,7 +66,7 @@ def _fmt_status() -> str:
     parts = [
         f"fan={_fan_state(bool(fan.fan))}",
         f"speed={_bold(str(fan.speed))}",
-        f"sweep={_fan_state(bool(fan.sweep))}",
+        f"oscillation={_fan_state(bool(fan.oscillation))}",
         f"ospeed={_bold(osp)}",
     ]
     return "  ".join(parts)
@@ -233,7 +233,7 @@ async def repl() -> None:
         elif cmd == "disconnect":
             await cmd_disconnect()
 
-        elif cmd in ("fan", "speed", "sweep", "ospeed", "center", "sleep", "thermostat", "sensors", "status"):
+        elif cmd in ("fan", "speed", "oscillation", "ospeed", "center", "sleep", "thermostat", "sensors", "status"):
             if not connected:
                 _err("Not connected. Use 'connect <name|#>' first.")
                 continue
@@ -248,17 +248,17 @@ async def repl() -> None:
                     else:
                         await fan.set_speed(int(args[0]))
                         print(f"speed {_arrow(args[0])}")
-                elif cmd == "sweep":
+                elif cmd == "oscillation":
                     if len(args) != 1 or args[0] not in ("0", "1"):
-                        _err("usage: sweep <0|1>")
+                        _err("usage: oscillation <0|1>")
                     else:
                         enable = bool(int(args[0]))
                         label = "on" if enable else "off"
-                        if bool(fan.sweep) == enable:
-                            print(_dim(f"sweep already {label}"))
+                        if bool(fan.oscillation) == enable:
+                            print(_dim(f"oscillation already {label}"))
                         else:
-                            await fan.set_sweep(enable)
-                            print(f"sweep {_arrow(label)}")
+                            await fan.set_oscillation(enable)
+                            print(f"oscillation {_arrow(label)}")
                 elif cmd == "ospeed":
                     if len(args) != 1 or args[0] not in ("1", "2", "3"):
                         _err("usage: ospeed <1|2|3>  (1=Low 2=Medium 3=High)")
@@ -269,7 +269,7 @@ async def repl() -> None:
                         print(f"ospeed {_arrow(label)}")
                 elif cmd == "center":
                     await fan.center_oscillation()
-                    print(f"sweep {_arrow('center')}")
+                    print(f"oscillation {_arrow('center')}")
                 elif cmd == "sleep":
                     if len(args) != 1:
                         _err("usage: sleep <minutes|off>")

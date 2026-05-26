@@ -44,7 +44,7 @@ AUTO_MODE_PARAM_DEFAULT = 19  # app default written to byte[13] when clearing au
 
 # ── COMMAND characteristic — 1-byte opcodes ───────────────────────────────────
 CMD_FAN_TOGGLE   = bytes([0x02])  # toggle power ON↔OFF
-CMD_SWEEP_TOGGLE = bytes([0x03])  # toggle oscillation ON↔OFF
+CMD_OSCILLATION_TOGGLE = bytes([0x03])  # toggle oscillation ON↔OFF
 CMD_CENTER       = bytes([0x00])  # return sweep head to center position
 CMD_CALIBRATE    = bytes([0x04])  # calibrate paired temperature sensors
 
@@ -53,8 +53,8 @@ def make_fan_toggle_cmd() -> bytes:
     return CMD_FAN_TOGGLE
 
 
-def make_sweep_toggle_cmd() -> bytes:
-    return CMD_SWEEP_TOGGLE
+def make_oscillation_toggle_cmd() -> bytes:
+    return CMD_OSCILLATION_TOGGLE
 
 
 def make_center_cmd() -> bytes:

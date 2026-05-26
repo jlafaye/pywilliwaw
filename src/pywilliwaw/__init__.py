@@ -14,7 +14,7 @@ from pywilliwaw.protocol import (
     SPEED_MIN,
     FanControlPacket,
     make_fan_toggle_cmd,
-    make_sweep_toggle_cmd,
+    make_oscillation_toggle_cmd,
     make_center_cmd,
     make_calibrate_sensors_cmd,
 )
@@ -43,7 +43,7 @@ __all__ = [
     "FanControlPacket",
     # 1-byte command builders
     "make_fan_toggle_cmd",
-    "make_sweep_toggle_cmd",
+    "make_oscillation_toggle_cmd",
     "make_center_cmd",
     "make_calibrate_sensors_cmd",
 ]

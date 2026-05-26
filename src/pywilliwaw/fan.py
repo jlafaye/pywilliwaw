@@ -24,7 +24,7 @@ from pywilliwaw.protocol import (
     SPEED_MIN,
     AUTO_MODE_PARAM_DEFAULT,
     CMD_FAN_TOGGLE,
-    CMD_SWEEP_TOGGLE,
+    CMD_OSCILLATION_TOGGLE,
     CMD_CENTER,
     CMD_CALIBRATE,
     FanControlPacket,
@@ -69,7 +69,7 @@ class Williwaw:
         # FANCONTROL-derived state
         self.fan: int = 0          # 1 = on, 0 = off  (from FANSTATE)
         self.speed: int = 0        # 1–15
-        self.sweep: int = 0        # 1 = oscillating, 0 = fixed
+        self.oscillation: int = 0  # 1 = oscillating, 0 = fixed
         self.oscillation_speed: int = OSCILLATION_SPEED_MEDIUM  # 1/2/3
 
         # FANSTATE-derived state
@@ -145,11 +145,11 @@ class Williwaw:
 
     # ── oscillation ────────────────────────────────────────────────────────────
 
-    async def set_sweep(self, enable: bool) -> None:
+    async def set_oscillation(self, enable: bool) -> None:
         """Toggle oscillation on/off."""
-        if bool(self.sweep) == bool(enable):
+        if bool(self.oscillation) == bool(enable):
             return
-        await self._client.write_gatt_char(COMMAND_CHAR, CMD_SWEEP_TOGGLE, response=True)
+        await self._client.write_gatt_char(COMMAND_CHAR, CMD_OSCILLATION_TOGGLE, response=True)
 
     async def set_oscillation_speed(self, osc_speed: int) -> None:
         """Set oscillation speed: 1=Low, 2=Medium, 3=High."""
@@ -217,7 +217,7 @@ class Williwaw:
             return
         self._control_packet = FanControlPacket.from_bytes(data)
         self.speed = self._control_packet.speed
-        self.sweep = self._control_packet.oscillation
+        self.oscillation = self._control_packet.oscillation
         self.oscillation_speed = self._control_packet.oscillation_speed
 
     def _apply_fanstate(self, data: bytearray) -> None:
