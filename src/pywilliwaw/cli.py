@@ -39,27 +39,50 @@ _CONFIG_PATH = Path.home() / ".config" / "williwaw" / "fans.json"
 
 _USE_COLOR = sys.stdout.isatty()
 
+
 def _c(code: str, text: str) -> str:
     return f"\033[{code}m{text}\033[0m" if _USE_COLOR else text
 
-def _dim(t: str)    -> str: return _c("2", t)
-def _bold(t: str)   -> str: return _c("1", t)
-def _cyan(t: str)   -> str: return _c("36", t)
-def _green(t: str)  -> str: return _c("32", t)
-def _yellow(t: str) -> str: return _c("33", t)
-def _red(t: str)    -> str: return _c("31", t)
+
+def _dim(t: str) -> str:
+    return _c("2", t)
+
+
+def _bold(t: str) -> str:
+    return _c("1", t)
+
+
+def _cyan(t: str) -> str:
+    return _c("36", t)
+
+
+def _green(t: str) -> str:
+    return _c("32", t)
+
+
+def _yellow(t: str) -> str:
+    return _c("33", t)
+
+
+def _red(t: str) -> str:
+    return _c("31", t)
+
 
 def _arrow(val: str) -> str:
     return f"{_cyan('→')} {_bold(val)}"
 
+
 def _fan_state(on: bool) -> str:
     return _green("on") if on else _dim("off")
+
 
 def _ok(msg: str) -> None:
     print(_green("✓") + " " + msg)
 
+
 def _err(msg: str) -> None:
     print(_red("✗") + " " + msg)
+
 
 def _fmt_status() -> str:
     osp = {1: "Low", 2: "Medium", 3: "High"}.get(fan.oscillation_speed, "?")
@@ -73,6 +96,7 @@ def _fmt_status() -> str:
 
 
 # ── config persistence ─────────────────────────────────────────────────────────
+
 
 def _load_known_fans() -> list[dict]:
     try:
@@ -91,6 +115,7 @@ def _save_known_fan(f: Williwaw) -> None:
 
 # ── startup reconnect ──────────────────────────────────────────────────────────
 
+
 async def _try_reconnect() -> None:
     global fan
     known = _load_known_fans()
@@ -107,7 +132,9 @@ async def _try_reconnect() -> None:
             return None
 
     scan_tasks = [asyncio.create_task(scan_one(e)) for e in known]
-    done, pending = await asyncio.wait(scan_tasks, timeout=3.0, return_when=asyncio.FIRST_COMPLETED)
+    done, pending = await asyncio.wait(
+        scan_tasks, timeout=3.0, return_when=asyncio.FIRST_COMPLETED
+    )
     for t in pending:
         t.cancel()
 
@@ -135,6 +162,7 @@ async def _try_reconnect() -> None:
 
 
 # ── device commands ────────────────────────────────────────────────────────────
+
 
 async def cmd_devices() -> None:
     global scan_results
@@ -193,6 +221,7 @@ async def cmd_disconnect() -> None:
 
 # ── REPL loop ──────────────────────────────────────────────────────────────────
 
+
 async def repl() -> None:
     loop = asyncio.get_running_loop()
     print(_bold("Williwaw") + _dim(" REPL. Type 'help' for commands.") + "\n")
@@ -233,7 +262,17 @@ async def repl() -> None:
         elif cmd == "disconnect":
             await cmd_disconnect()
 
-        elif cmd in ("fan", "speed", "oscillation", "ospeed", "center", "sleep", "thermostat", "sensors", "status"):
+        elif cmd in (
+            "fan",
+            "speed",
+            "oscillation",
+            "ospeed",
+            "center",
+            "sleep",
+            "thermostat",
+            "sensors",
+            "status",
+        ):
             if not connected:
                 _err("Not connected. Use 'connect <name|#>' first.")
                 continue
@@ -315,7 +354,11 @@ async def repl() -> None:
                         _err("usage: thermostat <15-27|off>")
                 elif cmd == "sensors":
                     if not fan.sensors:
-                        print(_dim("No sensor readings (pair sensors via the Williwaw app first)."))
+                        print(
+                            _dim(
+                                "No sensor readings (pair sensors via the Williwaw app first)."
+                            )
+                        )
                     else:
                         for s in fan.sensors:
                             temp = _bold(f"{s.temperature:.1f}°C")
@@ -334,7 +377,9 @@ async def repl() -> None:
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s %(name)s: %(message)s"
+    )
     asyncio.run(repl())
 
 

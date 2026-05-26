@@ -14,19 +14,19 @@ def _vendor_uuid_16(short: int) -> str:
 
 
 # ── GATT service (Williwaw proprietary) ───────────────────────────────────────
-WILLIWAW_SVC    = _vendor_uuid_16(0x0000)
+WILLIWAW_SVC = _vendor_uuid_16(0x0000)
 
 # Characteristics within WILLIWAW_SVC
-COMMAND_CHAR    = _vendor_uuid_16(0x0001)  # write — 1-byte commands
+COMMAND_CHAR = _vendor_uuid_16(0x0001)  # write — 1-byte commands
 FANCONTROL_CHAR = _vendor_uuid_16(0x0002)  # read/write/notify — 19-byte status
-SENSORS_CHAR    = _vendor_uuid_16(0x0003)  # read/write/notify — sensor MAC addresses
+SENSORS_CHAR = _vendor_uuid_16(0x0003)  # read/write/notify — sensor MAC addresses
 SENSORLIST_CHAR = _vendor_uuid_16(0x0004)  # notify — sensor readings
 ONLINETIME_CHAR = _vendor_uuid_16(0x0005)  # (unknown use)
-FANSTATE_CHAR   = _vendor_uuid_16(0x0006)  # read/notify — 6-byte power+timer state
+FANSTATE_CHAR = _vendor_uuid_16(0x0006)  # read/notify — 6-byte power+timer state
 DEVICENAME_CHAR = _vendor_uuid_16(0x0007)  # read/write/notify — UTF-8 name
 
 # ── Standard GATT (Device Information Service) ────────────────────────────────
-DEVICE_INFO_SVC   = normalize_uuid_16(0x180A)  # Device Information
+DEVICE_INFO_SVC = normalize_uuid_16(0x180A)  # Device Information
 FIRMWARE_REV_CHAR = normalize_uuid_16(0x2A26)  # Firmware Revision String
 
 
@@ -34,19 +34,19 @@ FIRMWARE_REV_CHAR = normalize_uuid_16(0x2A26)  # Firmware Revision String
 SPEED_MIN = 1
 SPEED_MAX = 15
 
-OSCILLATION_SPEED_LOW    = 1
+OSCILLATION_SPEED_LOW = 1
 OSCILLATION_SPEED_MEDIUM = 2
-OSCILLATION_SPEED_HIGH   = 3
+OSCILLATION_SPEED_HIGH = 3
 
 SLEEP_MAX_MIN = 1440  # 24 h
 
 AUTO_MODE_PARAM_DEFAULT = 19  # app default written to byte[13] when clearing auto-mode
 
 # ── COMMAND characteristic — 1-byte opcodes ───────────────────────────────────
-CMD_FAN_TOGGLE   = bytes([0x02])  # toggle power ON↔OFF
+CMD_FAN_TOGGLE = bytes([0x02])  # toggle power ON↔OFF
 CMD_OSCILLATION_TOGGLE = bytes([0x03])  # toggle oscillation ON↔OFF
-CMD_CENTER       = bytes([0x00])  # return sweep head to center position
-CMD_CALIBRATE    = bytes([0x04])  # calibrate paired temperature sensors
+CMD_CENTER = bytes([0x00])  # return sweep head to center position
+CMD_CALIBRATE = bytes([0x04])  # calibrate paired temperature sensors
 
 
 def make_fan_toggle_cmd() -> bytes:
@@ -69,6 +69,7 @@ def make_calibrate_sensors_cmd() -> bytes:
 
 # ── FANCONTROL characteristic — 19-byte packet ────────────────────────────────
 
+
 @dataclass
 class FanControlPacket:
     """19-byte FANCONTROL characteristic packet.
@@ -85,6 +86,7 @@ class FanControlPacket:
       [15:17] scheduled-start: minutes until start (LE uint16; 0=none)
       [17:19] scheduled-stop: minutes until stop (LE uint16; 0=none)
     """
+
     mode: int = 1
     speed: int = 1
     oscillation: int = 0
@@ -128,7 +130,9 @@ class FanControlPacket:
         return replace(self, mode=1, auto_mode=2, auto_mode_param=delta_c & 0xFF)
 
     def with_auto_mode_cleared(self) -> "FanControlPacket":
-        return replace(self, mode=0, auto_mode=0, auto_mode_param=AUTO_MODE_PARAM_DEFAULT)
+        return replace(
+            self, mode=0, auto_mode=0, auto_mode_param=AUTO_MODE_PARAM_DEFAULT
+        )
 
     def to_bytes(self) -> bytes:
         b = bytearray(19)

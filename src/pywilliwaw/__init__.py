@@ -1,4 +1,10 @@
-from pywilliwaw.fan import TemperatureSensor, Williwaw, discover, find_by_address, find_by_name
+from pywilliwaw.fan import (
+    TemperatureSensor,
+    Williwaw,
+    discover,
+    find_by_address,
+    find_by_name,
+)
 from pywilliwaw.protocol import (
     COMMAND_CHAR,
     FANCONTROL_CHAR,
