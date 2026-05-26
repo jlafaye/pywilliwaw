@@ -10,9 +10,13 @@ Commands (when connected):
   disconnect            disconnect from current device
   fan                   toggle fan on/off
   speed <1-15>          set fan speed
-  sweep <0|1>           enable or disable sweep
-  sleep <minutes|off>   set/cancel sleep timer (1–1440 min)
-  status                show current state
+  sweep <0|1>           enable or disable oscillation
+  ospeed <1-3>          set oscillation speed (1=Low 2=Medium 3=High)
+  center                return sweep head to center
+  sleep <minutes|off>   hardware sleep timer: turn off after N min (1–1440)
+  thermostat <°C|off>   auto-mode: run fan while temp ≥ °C (15–27)
+  sensors               show paired temperature sensors
+  status                show current fan state
 """
 
 import asyncio
@@ -26,7 +30,6 @@ from pywilliwaw import Williwaw, discover, find_by_address, find_by_name
 
 fan: Williwaw | None = None
 scan_results: list = []
-_sleep_task: asyncio.Task | None = None
 
 _CONFIG_PATH = Path.home() / ".config" / "williwaw" / "fans.json"
 
@@ -44,33 +47,6 @@ def _save_known_fan(f: Williwaw) -> None:
         known.append({"address": f.address, "name": f.name})
         _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
         _CONFIG_PATH.write_text(json.dumps(known, indent=2))
-
-
-# ── sleep timer (software) ────────────────────────────────────────────────────
-
-async def _sleep_worker(minutes: int) -> None:
-    await asyncio.sleep(minutes * 60)
-    if fan and fan.is_connected:
-        try:
-            await fan.toggle()
-            print(f"\n[sleep] fan turned off after {minutes} min")
-        except Exception as e:
-            print(f"\n[sleep] error: {e}")
-
-
-def _set_sleep(minutes: int) -> None:
-    global _sleep_task
-    _cancel_sleep()
-    _sleep_task = asyncio.create_task(_sleep_worker(minutes))
-
-
-def _cancel_sleep() -> bool:
-    global _sleep_task
-    if _sleep_task and not _sleep_task.done():
-        _sleep_task.cancel()
-        _sleep_task = None
-        return True
-    return False
 
 
 # ── startup reconnect ──────────────────────────────────────────────────────────
@@ -169,7 +145,6 @@ async def cmd_disconnect() -> None:
     if not fan or not fan.is_connected:
         print("Not connected.")
         return
-    _cancel_sleep()
     await fan.disconnect()
     fan = None
     print("Disconnected.")
@@ -214,7 +189,7 @@ async def repl() -> None:
         elif cmd == "disconnect":
             await cmd_disconnect()
 
-        elif cmd in ("fan", "speed", "sweep", "sleep", "status"):
+        elif cmd in ("fan", "speed", "sweep", "ospeed", "center", "sleep", "thermostat", "sensors", "status"):
             if not connected:
                 print("Not connected. Use 'connect <name|#>' first.")
                 continue
@@ -222,7 +197,8 @@ async def repl() -> None:
                 if cmd == "fan":
                     await fan.toggle()
                 elif cmd == "status":
-                    print(f"fan={'on' if fan.fan else 'off'}  speed={fan.speed}  sweep={'on' if fan.sweep else 'off'}")
+                    osp = {1: "Low", 2: "Medium", 3: "High"}.get(fan.oscillation_speed, "?")
+                    print(f"fan={'on' if fan.fan else 'off'}  speed={fan.speed}  sweep={'on' if fan.sweep else 'off'}  ospeed={osp}")
                 elif cmd == "speed":
                     if len(args) != 1 or not args[0].isdigit():
                         print("usage: speed <1-15>")
@@ -239,20 +215,46 @@ async def repl() -> None:
                         else:
                             await fan.set_sweep(enable)
                             print(f"sweep → {'on' if enable else 'off'}")
+                elif cmd == "ospeed":
+                    if len(args) != 1 or args[0] not in ("1", "2", "3"):
+                        print("usage: ospeed <1|2|3>  (1=Low 2=Medium 3=High)")
+                    else:
+                        osp = int(args[0])
+                        await fan.set_oscillation_speed(osp)
+                        print(f"ospeed → {['', 'Low', 'Medium', 'High'][osp]}")
+                elif cmd == "center":
+                    await fan.center_oscillation()
+                    print("sweep → center")
                 elif cmd == "sleep":
                     if len(args) != 1:
                         print("usage: sleep <minutes|off>")
                     elif args[0] == "off":
-                        if _cancel_sleep():
-                            print("sleep timer cancelled")
-                        else:
-                            print("no active sleep timer")
+                        await fan.set_sleep_timer(0)
+                        print("sleep timer cancelled")
                     elif args[0].isdigit() and 1 <= int(args[0]) <= 1440:
                         minutes = int(args[0])
-                        _set_sleep(minutes)
+                        await fan.set_sleep_timer(minutes)
                         print(f"sleep timer → {minutes} min")
                     else:
                         print("usage: sleep <1-1440|off>")
+                elif cmd == "thermostat":
+                    if len(args) != 1:
+                        print("usage: thermostat <15-27|off>")
+                    elif args[0] == "off":
+                        await fan.clear_auto_mode()
+                        print("thermostat → off")
+                    elif args[0].isdigit() and 15 <= int(args[0]) <= 27:
+                        t = int(args[0])
+                        await fan.set_thermostat(t)
+                        print(f"thermostat → {t}°C")
+                    else:
+                        print("usage: thermostat <15-27|off>")
+                elif cmd == "sensors":
+                    if not fan.sensors:
+                        print("No sensor readings (pair sensors via the Williwaw app first).")
+                    else:
+                        for s in fan.sensors:
+                            print(f"  {s.name}  {s.temperature:.1f}°C  bat={s.battery}%")
             except BleakGATTProtocolError as e:
                 print(f"device error: {e}")
             except ValueError as e:

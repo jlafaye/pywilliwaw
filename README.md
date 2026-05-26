@@ -76,7 +76,14 @@ async def scan():
 | `await fan.toggle()` | Toggle fan ON↔OFF |
 | `await fan.set_speed(speed)` | Set speed (1–15) |
 | `await fan.set_sweep(enable)` | Enable/disable oscillation |
-| `await fan.set_sleep_timer(minutes)` | Sleep timer in minutes (0 cancels, max 1440) |
+| `await fan.set_oscillation_speed(speed)` | Set oscillation speed (1=Low, 2=Medium, 3=High) |
+| `await fan.center_oscillation()` | Return sweep head to center position |
+| `await fan.set_sleep_timer(minutes)` | Hardware sleep timer: fan turns itself off after N minutes (0 cancels, max 1440) |
+| `await fan.set_thermostat(threshold_c)` | Auto-mode: run fan while temperature ≥ threshold °C (requires paired sensor) |
+| `await fan.set_temp_diff_mode(delta_c)` | Auto-mode: run fan while (sensorA − sensorB) ≥ delta °C (requires two sensors) |
+| `await fan.clear_auto_mode()` | Disable thermostat / temp-differential auto-mode |
+| `await fan.calibrate_sensors()` | Calibrate paired temperature sensors |
+| `await fan.remove_sensors()` | Unpair all temperature sensors |
 
 State is updated automatically from BLE notifications:
 
@@ -85,6 +92,10 @@ State is updated automatically from BLE notifications:
 | `fan.fan` | `int` | 1 = on, 0 = off |
 | `fan.speed` | `int` | Current speed (1–15) |
 | `fan.sweep` | `int` | 1 = oscillating, 0 = fixed |
+| `fan.oscillation_speed` | `int` | Oscillation speed: 1=Low, 2=Medium, 3=High |
+| `fan.sched_timer_type` | `int` | Active timer: 0=none, 1=scheduled-start, 2=scheduled-stop |
+| `fan.sched_remaining_s` | `int` | Seconds remaining on active timer |
+| `fan.sensors` | `list[TemperatureSensor]` | Paired temperature sensor readings |
 
 ---
 
@@ -126,11 +137,15 @@ williwaw@EC:92:6D:A1:2E:7F>
 | Command | Description |
 |---|---|
 | `disconnect` | Disconnect from the current device |
-| `status` | Show current fan state (on/off, speed, sweep) |
+| `status` | Show current fan state (on/off, speed, sweep, oscillation speed) |
 | `fan` | Toggle the fan on or off |
 | `speed <1-15>` | Set fan speed |
 | `sweep <0\|1>` | Disable (`0`) or enable (`1`) oscillation |
-| `sleep <minutes\|off>` | Set a sleep timer (1–1440 min); `sleep off` cancels it |
+| `ospeed <1\|2\|3>` | Set oscillation speed (1=Low, 2=Medium, 3=High) |
+| `center` | Return sweep head to center position |
+| `sleep <minutes\|off>` | Hardware sleep timer (1–1440 min); `sleep off` cancels it |
+| `thermostat <15-27\|off>` | Auto-mode: run while temperature ≥ °C; requires a paired sensor |
+| `sensors` | Show paired temperature sensor readings |
 
 ### Example session
 
@@ -177,9 +192,14 @@ src/pywilliwaw/
 
 ---
 
-## Limitations
+## Temperature sensors
 
-- **Thermal probe integration is not supported** — closing the loop with temperature sensors to drive fan speed automatically is not yet implemented.
+The Williwaw fan can be paired with up to two Williwaw Bluetooth temperature sensors (small wireless thermometers sold separately). Once paired via the official app:
+
+- The `thermostat` CLI command (or `set_thermostat()` API) lets the fan run automatically whenever the measured temperature reaches a set threshold.
+- The `set_temp_diff_mode()` API enables two-sensor differential mode: the fan runs when the temperature difference between sensor A and sensor B exceeds a configurable delta.
+
+Sensor readings are delivered via BLE notifications on the `SENSORLIST_CHAR` characteristic and are available in `fan.sensors`.
 
 ---
 
