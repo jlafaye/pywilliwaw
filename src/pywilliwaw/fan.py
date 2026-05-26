@@ -22,18 +22,12 @@ from pywilliwaw.protocol import (
     SLEEP_MAX_MIN,
     SPEED_MAX,
     SPEED_MIN,
+    AUTO_MODE_PARAM_DEFAULT,
     CMD_FAN_TOGGLE,
     CMD_SWEEP_TOGGLE,
     CMD_CENTER,
     CMD_CALIBRATE,
-    make_speed_cmd,
-    status_with_speed,
-    status_with_sweep,
-    status_with_oscillation_speed,
-    status_with_thermostat,
-    status_with_temp_diff,
-    status_clear_auto_mode,
-    status_with_scheduled_stop,
+    FanControlPacket,
 )
 
 
@@ -70,7 +64,7 @@ class Williwaw:
     def __init__(self, device: BLEDevice):
         self._device = device
         self._client = BleakClient(device)
-        self._status: bytearray = bytearray(19)  # live FANCONTROL packet
+        self._control_packet: FanControlPacket = FanControlPacket()
 
         # FANCONTROL-derived state
         self.fan: int = 0          # 1 = on, 0 = off  (from FANSTATE)
@@ -147,8 +141,7 @@ class Williwaw:
     async def set_speed(self, speed: int) -> None:
         if not SPEED_MIN <= speed <= SPEED_MAX:
             raise ValueError(f"speed must be {SPEED_MIN}–{SPEED_MAX}")
-        payload = status_with_speed(self._status, speed) if any(self._status) else make_speed_cmd(speed, self.sweep)
-        await self._client.write_gatt_char(FANCONTROL_CHAR, payload, response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_speed(speed).to_bytes(), response=True)
 
     # ── oscillation ────────────────────────────────────────────────────────────
 
@@ -162,8 +155,7 @@ class Williwaw:
         """Set oscillation speed: 1=Low, 2=Medium, 3=High."""
         if osc_speed not in (OSCILLATION_SPEED_LOW, OSCILLATION_SPEED_MEDIUM, OSCILLATION_SPEED_HIGH):
             raise ValueError("oscillation speed must be 1 (Low), 2 (Medium), or 3 (High)")
-        payload = status_with_oscillation_speed(self._status, osc_speed)
-        await self._client.write_gatt_char(FANCONTROL_CHAR, payload, response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_oscillation_speed(osc_speed).to_bytes(), response=True)
 
     async def center_oscillation(self) -> None:
         """Return sweep head to center position."""
@@ -175,25 +167,21 @@ class Williwaw:
         """Hardware sleep timer: fan turns itself off after N minutes (0 cancels, max 1440)."""
         if not 0 <= minutes <= SLEEP_MAX_MIN:
             raise ValueError(f"minutes must be 0 (cancel) or 1–{SLEEP_MAX_MIN}")
-        payload = status_with_scheduled_stop(self._status, minutes)
-        await self._client.write_gatt_char(FANCONTROL_CHAR, payload, response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_scheduled_stop(minutes).to_bytes(), response=True)
 
     # ── auto-mode (requires paired temperature sensors) ────────────────────────
 
     async def set_thermostat(self, threshold_c: int) -> None:
         """Turn on thermostat mode: fan runs while temperature >= threshold_c (°C, 15–27)."""
-        payload = status_with_thermostat(self._status, threshold_c)
-        await self._client.write_gatt_char(FANCONTROL_CHAR, payload, response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_thermostat(threshold_c).to_bytes(), response=True)
 
     async def set_temp_diff_mode(self, delta_c: int) -> None:
         """Turn on temp-differential mode: fan runs while (sensorA − sensorB) >= delta_c."""
-        payload = status_with_temp_diff(self._status, delta_c)
-        await self._client.write_gatt_char(FANCONTROL_CHAR, payload, response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_temp_diff(delta_c).to_bytes(), response=True)
 
     async def clear_auto_mode(self) -> None:
         """Disable thermostat / temp-differential auto-mode."""
-        payload = status_clear_auto_mode(self._status)
-        await self._client.write_gatt_char(FANCONTROL_CHAR, payload, response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_auto_mode_cleared().to_bytes(), response=True)
 
     # ── temperature sensors ────────────────────────────────────────────────────
 
@@ -210,12 +198,7 @@ class Williwaw:
     async def set_wake_timer(self, minutes: int) -> None:
         """Delayed start: turns fan OFF and restarts it after N minutes (0 cancels).
         Use set_sleep_timer() for a sleep timer instead."""
-        from pywilliwaw.protocol import _default_status
-        b = bytearray(self._status) if any(self._status) else _default_status()
-        b[0] = 0x00  # fan off until timer fires
-        b[15] = minutes & 0xFF
-        b[16] = (minutes >> 8) & 0xFF
-        await self._client.write_gatt_char(FANCONTROL_CHAR, bytes(b), response=True)
+        await self._client.write_gatt_char(FANCONTROL_CHAR, self._control_packet.with_scheduled_start(minutes).to_bytes(), response=True)
 
     # ── notification handlers ──────────────────────────────────────────────────
 
@@ -232,11 +215,10 @@ class Williwaw:
         """Parse 19-byte FANCONTROL characteristic."""
         if len(data) < 3:
             return
-        self._status = bytearray(data)
-        self.speed = data[1]
-        self.sweep = data[2]
-        if len(data) > 3:
-            self.oscillation_speed = data[3] or OSCILLATION_SPEED_MEDIUM
+        self._control_packet = FanControlPacket.from_bytes(data)
+        self.speed = self._control_packet.speed
+        self.sweep = self._control_packet.oscillation
+        self.oscillation_speed = self._control_packet.oscillation_speed
 
     def _apply_fanstate(self, data: bytearray) -> None:
         """Parse 6-byte FANSTATE characteristic: power + active timer."""

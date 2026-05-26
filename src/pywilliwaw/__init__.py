@@ -12,19 +12,11 @@ from pywilliwaw.protocol import (
     SLEEP_MAX_MIN,
     SPEED_MAX,
     SPEED_MIN,
+    FanControlPacket,
     make_fan_toggle_cmd,
     make_sweep_toggle_cmd,
     make_center_cmd,
     make_calibrate_sensors_cmd,
-    make_speed_cmd,
-    make_wake_timer_cmd,
-    status_with_speed,
-    status_with_sweep,
-    status_with_oscillation_speed,
-    status_with_thermostat,
-    status_with_temp_diff,
-    status_clear_auto_mode,
-    status_with_scheduled_stop,
 )
 
 __all__ = [
@@ -47,18 +39,11 @@ __all__ = [
     "OSCILLATION_SPEED_LOW",
     "OSCILLATION_SPEED_MEDIUM",
     "OSCILLATION_SPEED_HIGH",
-    # packet builders
+    # FANCONTROL packet
+    "FanControlPacket",
+    # 1-byte command builders
     "make_fan_toggle_cmd",
     "make_sweep_toggle_cmd",
     "make_center_cmd",
     "make_calibrate_sensors_cmd",
-    "make_speed_cmd",
-    "make_wake_timer_cmd",
-    "status_with_speed",
-    "status_with_sweep",
-    "status_with_oscillation_speed",
-    "status_with_thermostat",
-    "status_with_temp_diff",
-    "status_clear_auto_mode",
-    "status_with_scheduled_stop",
 ]
