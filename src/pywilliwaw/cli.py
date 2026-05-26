@@ -22,6 +22,7 @@ Commands (when connected):
 import asyncio
 import json
 import readline  # noqa: F401 — enables up/down arrow history in input()
+import sys
 from pathlib import Path
 
 from bleak.exc import BleakGATTProtocolError
@@ -33,6 +34,44 @@ scan_results: list = []
 
 _CONFIG_PATH = Path.home() / ".config" / "williwaw" / "fans.json"
 
+# ── color helpers ──────────────────────────────────────────────────────────────
+
+_USE_COLOR = sys.stdout.isatty()
+
+def _c(code: str, text: str) -> str:
+    return f"\033[{code}m{text}\033[0m" if _USE_COLOR else text
+
+def _dim(t: str)    -> str: return _c("2", t)
+def _bold(t: str)   -> str: return _c("1", t)
+def _cyan(t: str)   -> str: return _c("36", t)
+def _green(t: str)  -> str: return _c("32", t)
+def _yellow(t: str) -> str: return _c("33", t)
+def _red(t: str)    -> str: return _c("31", t)
+
+def _arrow(val: str) -> str:
+    return f"{_cyan('→')} {_bold(val)}"
+
+def _fan_state(on: bool) -> str:
+    return _green("on") if on else _dim("off")
+
+def _ok(msg: str) -> None:
+    print(_green("✓") + " " + msg)
+
+def _err(msg: str) -> None:
+    print(_red("✗") + " " + msg)
+
+def _fmt_status() -> str:
+    osp = {1: "Low", 2: "Medium", 3: "High"}.get(fan.oscillation_speed, "?")
+    parts = [
+        f"fan={_fan_state(bool(fan.fan))}",
+        f"speed={_bold(str(fan.speed))}",
+        f"sweep={_fan_state(bool(fan.sweep))}",
+        f"ospeed={_bold(osp)}",
+    ]
+    return "  ".join(parts)
+
+
+# ── config persistence ─────────────────────────────────────────────────────────
 
 def _load_known_fans() -> list[dict]:
     try:
@@ -58,9 +97,8 @@ async def _try_reconnect() -> None:
         return
 
     names = ", ".join(e["name"] for e in known)
-    print(f"Looking for known fan(s) ({names})…", end=" ", flush=True)
+    print(f"{_dim('Looking for')} {_bold(names)}…", end=" ", flush=True)
 
-    # Phase 1: scan for all known devices in parallel (safe to cancel).
     async def scan_one(entry: dict):
         try:
             return await find_by_address(entry["address"], timeout=3.0)
@@ -83,83 +121,88 @@ async def _try_reconnect() -> None:
             pass
 
     if device is None:
-        print("not found, use 'connect'")
+        print(_dim("not found, use 'connect'"))
         return
 
-    # Phase 2: connect to the found device — never cancelled mid-flight.
     try:
         f = Williwaw(device)
         await f.connect()
         fan = f
-        print(f"connected ({fan.name})")
+        print(_green("connected") + f" ({_bold(fan.name)})")
     except Exception:
-        print("found but could not connect, use 'connect'")
+        print(_yellow("found but could not connect, use 'connect'"))
 
 
 # ── device commands ────────────────────────────────────────────────────────────
 
 async def cmd_devices() -> None:
     global scan_results
-    print("Scanning for 5 seconds…")
+    print(_dim("Scanning for 5 seconds…"))
     scan_results = await discover(timeout=5.0)
     scan_results.sort(key=lambda d: d.name or "")
     if not scan_results:
-        print("No devices found.")
+        print(_dim("No devices found."))
         return
     for i, d in enumerate(scan_results):
-        print(f"  [{i}]  {d.name or '(unknown)':<30}  {d.address}")
+        idx = _cyan(f"[{i}]")
+        name = _bold(d.name or "(unknown)")
+        addr = _dim(d.address)
+        print(f"  {idx}  {name:<40}  {addr}")
 
 
 async def cmd_connect(target: str) -> None:
     global fan
 
     if fan and fan.is_connected:
-        print("Already connected. Run 'disconnect' first.")
+        _err("Already connected. Run 'disconnect' first.")
         return
 
     if target.isdigit():
         idx = int(target)
         if not scan_results:
-            print("No scan results. Run 'devices' first.")
+            _err("No scan results. Run 'devices' first.")
             return
         if idx >= len(scan_results):
-            print(f"Index {idx} out of range (0–{len(scan_results)-1}).")
+            _err(f"Index {idx} out of range (0–{len(scan_results)-1}).")
             return
         device = scan_results[idx]
     else:
-        print(f"Scanning for '{target}'…")
+        print(_dim(f"Scanning for '{target}'…"))
         device = await find_by_name(target, timeout=10.0)
         if device is None:
-            print(f"Device '{target}' not found.")
+            _err(f"Device '{target}' not found.")
             return
 
-    print(f"Connecting to {device.name} ({device.address})…")
+    print(_dim(f"Connecting to {device.name} ({device.address})…"))
     fan = Williwaw(device)
     await fan.connect()
     _save_known_fan(fan)
-    print(f"Connected.  fan={'on' if fan.fan else 'off'}  speed={fan.speed}  sweep={'on' if fan.sweep else 'off'}")
+    print(_green("Connected.") + "  " + _fmt_status())
 
 
 async def cmd_disconnect() -> None:
     global fan
     if not fan or not fan.is_connected:
-        print("Not connected.")
+        _err("Not connected.")
         return
     await fan.disconnect()
     fan = None
-    print("Disconnected.")
+    print(_dim("Disconnected."))
 
 
 # ── REPL loop ──────────────────────────────────────────────────────────────────
 
 async def repl() -> None:
     loop = asyncio.get_running_loop()
-    print("Williwaw REPL. Type 'help' for commands.\n")
+    print(_bold("Williwaw") + _dim(" REPL. Type 'help' for commands.") + "\n")
     await _try_reconnect()
 
     while True:
         connected = fan and fan.is_connected
-        prompt = f"williwaw{'@' + fan.address if connected else ''}> "
+        if connected:
+            prompt = _bold("williwaw") + _dim("@") + _cyan(fan.address) + _dim("> ")
+        else:
+            prompt = _dim("williwaw> ")
 
         try:
             line = await loop.run_in_executor(None, lambda: input(prompt))
@@ -182,7 +225,7 @@ async def repl() -> None:
 
         elif cmd == "connect":
             if not args:
-                print("usage: connect <name|#>")
+                _err("usage: connect <name|#>")
             else:
                 await cmd_connect(" ".join(args))
 
@@ -191,77 +234,80 @@ async def repl() -> None:
 
         elif cmd in ("fan", "speed", "sweep", "ospeed", "center", "sleep", "thermostat", "sensors", "status"):
             if not connected:
-                print("Not connected. Use 'connect <name|#>' first.")
+                _err("Not connected. Use 'connect <name|#>' first.")
                 continue
             try:
                 if cmd == "fan":
                     await fan.toggle()
                 elif cmd == "status":
-                    osp = {1: "Low", 2: "Medium", 3: "High"}.get(fan.oscillation_speed, "?")
-                    print(f"fan={'on' if fan.fan else 'off'}  speed={fan.speed}  sweep={'on' if fan.sweep else 'off'}  ospeed={osp}")
+                    print(_fmt_status())
                 elif cmd == "speed":
                     if len(args) != 1 or not args[0].isdigit():
-                        print("usage: speed <1-15>")
+                        _err("usage: speed <1-15>")
                     else:
                         await fan.set_speed(int(args[0]))
-                        print(f"speed → {args[0]}")
+                        print(f"speed {_arrow(args[0])}")
                 elif cmd == "sweep":
                     if len(args) != 1 or args[0] not in ("0", "1"):
-                        print("usage: sweep <0|1>")
+                        _err("usage: sweep <0|1>")
                     else:
                         enable = bool(int(args[0]))
+                        label = "on" if enable else "off"
                         if bool(fan.sweep) == enable:
-                            print(f"sweep already {'on' if enable else 'off'}")
+                            print(_dim(f"sweep already {label}"))
                         else:
                             await fan.set_sweep(enable)
-                            print(f"sweep → {'on' if enable else 'off'}")
+                            print(f"sweep {_arrow(label)}")
                 elif cmd == "ospeed":
                     if len(args) != 1 or args[0] not in ("1", "2", "3"):
-                        print("usage: ospeed <1|2|3>  (1=Low 2=Medium 3=High)")
+                        _err("usage: ospeed <1|2|3>  (1=Low 2=Medium 3=High)")
                     else:
                         osp = int(args[0])
                         await fan.set_oscillation_speed(osp)
-                        print(f"ospeed → {['', 'Low', 'Medium', 'High'][osp]}")
+                        label = ["", "Low", "Medium", "High"][osp]
+                        print(f"ospeed {_arrow(label)}")
                 elif cmd == "center":
                     await fan.center_oscillation()
-                    print("sweep → center")
+                    print(f"sweep {_arrow('center')}")
                 elif cmd == "sleep":
                     if len(args) != 1:
-                        print("usage: sleep <minutes|off>")
+                        _err("usage: sleep <minutes|off>")
                     elif args[0] == "off":
                         await fan.set_sleep_timer(0)
-                        print("sleep timer cancelled")
+                        print(_dim("sleep timer cancelled"))
                     elif args[0].isdigit() and 1 <= int(args[0]) <= 1440:
                         minutes = int(args[0])
                         await fan.set_sleep_timer(minutes)
-                        print(f"sleep timer → {minutes} min")
+                        print(f"sleep timer {_arrow(f'{minutes} min')}")
                     else:
-                        print("usage: sleep <1-1440|off>")
+                        _err("usage: sleep <1-1440|off>")
                 elif cmd == "thermostat":
                     if len(args) != 1:
-                        print("usage: thermostat <15-27|off>")
+                        _err("usage: thermostat <15-27|off>")
                     elif args[0] == "off":
                         await fan.clear_auto_mode()
-                        print("thermostat → off")
+                        print(f"thermostat {_arrow('off')}")
                     elif args[0].isdigit() and 15 <= int(args[0]) <= 27:
                         t = int(args[0])
                         await fan.set_thermostat(t)
-                        print(f"thermostat → {t}°C")
+                        print(f"thermostat {_arrow(f'{t}°C')}")
                     else:
-                        print("usage: thermostat <15-27|off>")
+                        _err("usage: thermostat <15-27|off>")
                 elif cmd == "sensors":
                     if not fan.sensors:
-                        print("No sensor readings (pair sensors via the Williwaw app first).")
+                        print(_dim("No sensor readings (pair sensors via the Williwaw app first)."))
                     else:
                         for s in fan.sensors:
-                            print(f"  {s.name}  {s.temperature:.1f}°C  bat={s.battery}%")
+                            temp = _bold(f"{s.temperature:.1f}°C")
+                            bat = _dim(f"bat={s.battery}%")
+                            print(f"  {_cyan(s.name)}  {temp}  {bat}")
             except BleakGATTProtocolError as e:
-                print(f"device error: {e}")
+                _err(f"device error: {e}")
             except ValueError as e:
-                print(f"error: {e}")
+                _err(f"{e}")
 
         else:
-            print(f"Unknown command: {cmd!r}  (type 'help' for commands)")
+            _err(f"Unknown command: {cmd!r}  (type 'help' for commands)")
 
     if fan and fan.is_connected:
         await cmd_disconnect()
