@@ -21,6 +21,7 @@ Commands (when connected):
 
 import asyncio
 import json
+import logging
 import readline  # noqa: F401 — enables up/down arrow history in input()
 import sys
 from pathlib import Path
@@ -314,6 +315,7 @@ async def repl() -> None:
 
 
 def main() -> None:
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
     asyncio.run(repl())
 
 

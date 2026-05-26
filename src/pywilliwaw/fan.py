@@ -1,6 +1,9 @@
 """High-level Williwaw fan controller."""
 
+import logging
 import struct
+
+_log = logging.getLogger(__name__)
 
 from bleak import BleakClient, BleakScanner
 from bleak.backends.device import BLEDevice
@@ -9,6 +12,7 @@ from pywilliwaw.protocol import (
     COMMAND_CHAR,
     FANCONTROL_CHAR,
     FANSTATE_CHAR,
+    FIRMWARE_REV_CHAR,
     SENSORS_CHAR,
     SENSORLIST_CHAR,
     DEVICENAME_CHAR,
@@ -98,6 +102,11 @@ class Williwaw:
 
     async def connect(self) -> None:
         await self._client.connect()
+        try:
+            fw = await self._client.read_gatt_char(FIRMWARE_REV_CHAR)
+            _log.info("Connected to %s — firmware: %s", self.name, fw.decode())
+        except Exception:
+            _log.info("Connected to %s — firmware version unavailable", self.name)
         raw = await self._client.read_gatt_char(FANCONTROL_CHAR)
         self._apply_fancontrol(raw)
         await self._client.start_notify(FANCONTROL_CHAR, self._on_fancontrol)
@@ -106,25 +115,25 @@ class Williwaw:
             self._apply_fanstate(state)
             await self._client.start_notify(FANSTATE_CHAR, self._on_fanstate)
         except Exception:
-            pass
+            _log.warning("FANSTATE_CHAR not available — power/timer state will not be tracked", exc_info=True)
         try:
             await self._client.start_notify(SENSORLIST_CHAR, self._on_sensorlist)
         except Exception:
-            pass
+            _log.warning("SENSORLIST_CHAR not available — sensor readings will not be tracked", exc_info=True)
 
     async def disconnect(self) -> None:
         try:
             await self._client.stop_notify(FANCONTROL_CHAR)
         except Exception:
-            pass
+            _log.warning("Failed to unsubscribe from FANCONTROL_CHAR", exc_info=True)
         try:
             await self._client.stop_notify(FANSTATE_CHAR)
         except Exception:
-            pass
+            _log.warning("Failed to unsubscribe from FANSTATE_CHAR", exc_info=True)
         try:
             await self._client.stop_notify(SENSORLIST_CHAR)
         except Exception:
-            pass
+            _log.warning("Failed to unsubscribe from SENSORLIST_CHAR", exc_info=True)
         await self._client.disconnect()
 
     # ── fan power ──────────────────────────────────────────────────────────────
@@ -201,7 +210,7 @@ class Williwaw:
     async def set_wake_timer(self, minutes: int) -> None:
         """Delayed start: turns fan OFF and restarts it after N minutes (0 cancels).
         Use set_sleep_timer() for a sleep timer instead."""
-        from pywilliwaw.protocol import status_with_scheduled_stop, _default_status
+        from pywilliwaw.protocol import _default_status
         b = bytearray(self._status) if any(self._status) else _default_status()
         b[0] = 0x00  # fan off until timer fires
         b[15] = minutes & 0xFF
@@ -240,13 +249,15 @@ class Williwaw:
     def _apply_sensorlist(self, data: bytearray) -> None:
         """Parse temperature sensor readings (10 bytes per sensor)."""
         sensors = []
-        for i in range(0, len(data) - 9, 10):
+        for i in range(0, len(data), 10):
+            if i + 10 > len(data):
+                break
             try:
                 s = TemperatureSensor._from_10bytes(data[i:i + 10])
                 if any(s.address):
                     sensors.append(s)
             except Exception:
-                pass
+                _log.warning("Failed to parse sensor entry at offset %d", i, exc_info=True)
         if sensors:
             self.sensors = sensors
 

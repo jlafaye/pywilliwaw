@@ -10,10 +10,8 @@ from pywilliwaw.protocol import (
     OSCILLATION_SPEED_LOW,
     OSCILLATION_SPEED_MEDIUM,
     SLEEP_MAX_MIN,
-    SPEED_CHAR,
     SPEED_MAX,
     SPEED_MIN,
-    SWEEP_CHAR,
     make_fan_toggle_cmd,
     make_sweep_toggle_cmd,
     make_center_cmd,
@@ -42,9 +40,6 @@ __all__ = [
     "SENSORS_CHAR",
     "SENSORLIST_CHAR",
     "DEVICENAME_CHAR",
-    # backward-compat aliases
-    "SPEED_CHAR",
-    "SWEEP_CHAR",
     # limits
     "SPEED_MIN",
     "SPEED_MAX",

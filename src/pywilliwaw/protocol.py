@@ -2,27 +2,32 @@
 
 import struct
 
+from bleak.uuids import normalize_uuid_16
+
 DEVICE_NAME = "Williwaw"
 
+
+def _vendor_uuid_16(short: int) -> str:
+    # Expands a 16-bit offset into the Williwaw vendor UUID space (base 0bc7xxxx-ac91-4a15-ae2d-4fad27e55276)
+    return f"0bc7{short:04x}-ac91-4a15-ae2d-4fad27e55276"
+
+
 # ── GATT service (Williwaw proprietary) ───────────────────────────────────────
-WILLIWAW_SVC = "0bc70000-ac91-4a15-ae2d-4fad27e55276"
+WILLIWAW_SVC    = _vendor_uuid_16(0x0000)
 
 # Characteristics within WILLIWAW_SVC
-COMMAND_CHAR  = "0bc70001-ac91-4a15-ae2d-4fad27e55276"  # write — 1-byte commands
-FANCONTROL_CHAR = "0bc70002-ac91-4a15-ae2d-4fad27e55276"  # read/write/notify — 19-byte status
-SENSORS_CHAR  = "0bc70003-ac91-4a15-ae2d-4fad27e55276"  # read/write/notify — sensor MAC addresses
-SENSORLIST_CHAR = "0bc70004-ac91-4a15-ae2d-4fad27e55276"  # notify — sensor readings
-ONLINETIME_CHAR = "0bc70005-ac91-4a15-ae2d-4fad27e55276"  # (unknown use)
-FANSTATE_CHAR = "0bc70006-ac91-4a15-ae2d-4fad27e55276"  # read/notify — 6-byte power+timer state
-DEVICENAME_CHAR = "0bc70007-ac91-4a15-ae2d-4fad27e55276"  # read/write/notify — UTF-8 name
+COMMAND_CHAR    = _vendor_uuid_16(0x0001)  # write — 1-byte commands
+FANCONTROL_CHAR = _vendor_uuid_16(0x0002)  # read/write/notify — 19-byte status
+SENSORS_CHAR    = _vendor_uuid_16(0x0003)  # read/write/notify — sensor MAC addresses
+SENSORLIST_CHAR = _vendor_uuid_16(0x0004)  # notify — sensor readings
+ONLINETIME_CHAR = _vendor_uuid_16(0x0005)  # (unknown use)
+FANSTATE_CHAR   = _vendor_uuid_16(0x0006)  # read/notify — 6-byte power+timer state
+DEVICENAME_CHAR = _vendor_uuid_16(0x0007)  # read/write/notify — UTF-8 name
 
 # ── Standard GATT (Device Information Service) ────────────────────────────────
-DEVICE_INFO_SVC = "0000180a-0000-1000-8000-00805f9b34fb"
-FIRMWARE_REV_CHAR = "00002a26-0000-1000-8000-00805f9b34fb"
+DEVICE_INFO_SVC   = normalize_uuid_16(0x180A)  # Device Information
+FIRMWARE_REV_CHAR = normalize_uuid_16(0x2A26)  # Firmware Revision String
 
-# Backward-compatible aliases
-SWEEP_CHAR = COMMAND_CHAR
-SPEED_CHAR = FANCONTROL_CHAR
 
 # ── Fan limits ────────────────────────────────────────────────────────────────
 SPEED_MIN = 1
@@ -33,6 +38,8 @@ OSCILLATION_SPEED_MEDIUM = 2
 OSCILLATION_SPEED_HIGH   = 3
 
 SLEEP_MAX_MIN = 1440  # 24 h
+
+AUTO_MODE_PARAM_DEFAULT = 19  # app default written to byte[13] when clearing auto-mode
 
 # ── COMMAND characteristic — 1-byte opcodes ───────────────────────────────────
 CMD_FAN_TOGGLE   = bytes([0x02])  # toggle power ON↔OFF
@@ -136,7 +143,7 @@ def status_clear_auto_mode(status: bytes | bytearray) -> bytes:
     b = bytearray(status)
     b[0] = 0
     b[12] = 0
-    b[13] = 19  # app default when clearing
+    b[13] = AUTO_MODE_PARAM_DEFAULT
     return bytes(b)
 
 
