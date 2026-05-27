@@ -257,7 +257,11 @@ class Williwaw:
 
     def _apply_fancontrol(self, data: bytearray) -> None:
         """Parse 19-byte FANCONTROL characteristic."""
-        if len(data) < 3:
+        if len(data) < 19:
+            _log.warning(
+                "FANCONTROL packet too short (%d bytes, expected 19) — ignoring",
+                len(data),
+            )
             return
         self._control_packet = FanControlPacket.from_bytes(data)
         self.speed = self._control_packet.speed
@@ -286,14 +290,7 @@ class Williwaw:
                 _log.warning(
                     "Failed to parse sensor entry at offset %d", i, exc_info=True
                 )
-        if sensors:
-            self.sensors = sensors
-
-    # ── backward-compat alias ──────────────────────────────────────────────────
-
-    def _apply(self, data: bytearray) -> None:
-        self._apply_fancontrol(data)
-
+        self.sensors = sensors
 
 async def discover(timeout: float = 5.0) -> list[BLEDevice]:
     return await BleakScanner.discover(timeout=timeout)

@@ -94,6 +94,7 @@ class FanControlPacket:
     _internal: bytes = field(default_factory=lambda: bytes([0, 0, 0, 0, 0x02, 0, 0, 0]))
     auto_mode: int = 0
     auto_mode_param: int = 1
+    reserved_14: int = 0  # byte[14]: reserved — round-tripped as-is
     scheduled_start_min: int = 0
     scheduled_stop_min: int = 0
 
@@ -107,6 +108,7 @@ class FanControlPacket:
             _internal=bytes(data[4:12]),
             auto_mode=data[12],
             auto_mode_param=data[13],
+            reserved_14=data[14],
             scheduled_start_min=struct.unpack_from("<H", data, 15)[0],
             scheduled_stop_min=struct.unpack_from("<H", data, 17)[0],
         )
@@ -143,6 +145,7 @@ class FanControlPacket:
         b[4:12] = self._internal
         b[12] = self.auto_mode
         b[13] = self.auto_mode_param
+        b[14] = self.reserved_14
         struct.pack_into("<H", b, 15, self.scheduled_start_min)
         struct.pack_into("<H", b, 17, self.scheduled_stop_min)
         return bytes(b)

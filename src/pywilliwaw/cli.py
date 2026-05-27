@@ -279,7 +279,9 @@ async def repl() -> None:
             try:
                 if cmd == "fan":
                     if not args:
+                        new_state = not fan.fan
                         await fan.toggle()
+                        print(f"fan {_arrow('on' if new_state else 'off')}")
                     elif args[0] in ("1", "on"):
                         if fan.fan:
                             print(_dim("fan already on"))

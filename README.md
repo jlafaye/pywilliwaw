@@ -45,12 +45,12 @@ async def main():
     fan = Williwaw(device)
     await fan.connect()
 
-    await fan.set_speed(7)       # speed 1–15
-    await fan.toggle()           # toggle fan on/off
-    await fan.set_sweep(True)    # enable oscillation
-    await fan.set_sleep_timer(30)  # turn off after 30 minutes
+    await fan.set_speed(7)           # speed 1–15
+    await fan.toggle()               # toggle fan on/off
+    await fan.set_oscillation(True)  # enable oscillation
+    await fan.set_sleep_timer(30)    # turn off after 30 minutes
 
-    print(f"fan={'on' if fan.fan else 'off'}  speed={fan.speed}  sweep={fan.sweep}")
+    print(f"fan={'on' if fan.fan else 'off'}  speed={fan.speed}  oscillation={fan.oscillation}")
     await fan.disconnect()
 
 asyncio.run(main())
@@ -75,7 +75,7 @@ async def scan():
 | `await fan.disconnect()` | Disconnect cleanly |
 | `await fan.toggle()` | Toggle fan ON↔OFF |
 | `await fan.set_speed(speed)` | Set speed (1–15) |
-| `await fan.set_sweep(enable)` | Enable/disable oscillation |
+| `await fan.set_oscillation(enable)` | Enable/disable oscillation |
 | `await fan.set_oscillation_speed(speed)` | Set oscillation speed (1=Low, 2=Medium, 3=High) |
 | `await fan.center_oscillation()` | Return sweep head to center position |
 | `await fan.set_sleep_timer(minutes)` | Hardware sleep timer: fan turns itself off after N minutes (0 cancels, max 1440) |
@@ -91,7 +91,7 @@ State is updated automatically from BLE notifications:
 |---|---|---|
 | `fan.fan` | `int` | 1 = on, 0 = off |
 | `fan.speed` | `int` | Current speed (1–15) |
-| `fan.sweep` | `int` | 1 = oscillating, 0 = fixed |
+| `fan.oscillation` | `int` | 1 = oscillating, 0 = fixed |
 | `fan.oscillation_speed` | `int` | Oscillation speed: 1=Low, 2=Medium, 3=High |
 | `fan.sched_timer_type` | `int` | Active timer: 0=none, 1=scheduled-start, 2=scheduled-stop |
 | `fan.sched_remaining_s` | `int` | Seconds remaining on active timer |
@@ -137,10 +137,10 @@ williwaw@EC:92:6D:A1:2E:7F>
 | Command | Description |
 |---|---|
 | `disconnect` | Disconnect from the current device |
-| `status` | Show current fan state (on/off, speed, sweep, oscillation speed) |
-| `fan` | Toggle the fan on or off |
+| `status` | Show current fan state (on/off, speed, oscillation, oscillation speed) |
+| `fan [0\|off\|1\|on]` | Toggle the fan on or off, or set explicitly |
 | `speed <1-15>` | Set fan speed |
-| `sweep <0\|1>` | Disable (`0`) or enable (`1`) oscillation |
+| `oscillation [0\|off\|1\|on]` | Disable (`0`/`off`) or enable (`1`/`on`) oscillation, or toggle |
 | `ospeed <1\|2\|3>` | Set oscillation speed (1=Low, 2=Medium, 3=High) |
 | `center` | Return sweep head to center position |
 | `sleep <minutes\|off>` | Hardware sleep timer (1–1440 min); `sleep off` cancels it |
@@ -156,23 +156,25 @@ Scanning for 5 seconds…
 
 williwaw> connect 0
 Connecting to Williwaw (EC:92:6D:A1:2E:7F)…
-Connected.  fan=on  speed=3  sweep=off
+Connected.  fan=on  speed=3  oscillation=off
 
 williwaw@EC:92:6D:A1:2E:7F> speed 7
 speed → 7
 
-williwaw@EC:92:6D:A1:2E:7F> sweep 1
-sweep → on
+williwaw@EC:92:6D:A1:2E:7F> oscillation 1
+oscillation → on
 
 williwaw@EC:92:6D:A1:2E:7F> sleep 30
 sleep timer → 30 min
 
 williwaw@EC:92:6D:A1:2E:7F> status
-fan=on  speed=7  sweep=on
+fan=on  speed=7  oscillation=on
 
-williwaw@EC:92:6D:A1:2E:7F> fan
+williwaw@EC:92:6D:A1:2E:7F> fan off
+fan → off
+
 williwaw@EC:92:6D:A1:2E:7F> status
-fan=off  speed=7  sweep=on
+fan=off  speed=7  oscillation=on
 
 williwaw@EC:92:6D:A1:2E:7F> quit
 Disconnected.
