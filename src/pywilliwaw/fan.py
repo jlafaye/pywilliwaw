@@ -2,6 +2,7 @@
 
 import logging
 import struct
+from collections.abc import Callable
 
 _log = logging.getLogger(__name__)
 
@@ -63,16 +64,22 @@ class TemperatureSensor:
 class Williwaw:
     """BLE-backed controller for a Williwaw fan."""
 
-    def __init__(self, device: BLEDevice):
+    def __init__(
+        self,
+        device: BLEDevice,
+        on_update: Callable[[], None] | None = None,
+    ):
         self._device = device
         self._client = BleakClient(device)
         self._control_packet: FanControlPacket = FanControlPacket()
+        self._on_update = on_update
 
         # FANCONTROL-derived state
         self.fan: int = 0  # 1 = on, 0 = off  (from FANSTATE)
         self.speed: int = 0  # 1–15
         self.oscillation: int = 0  # 1 = oscillating, 0 = fixed
         self.oscillation_speed: int = OSCILLATION_SPEED_MEDIUM  # 1/2/3
+        self.sleep_timer_min: int = 0  # scheduled-stop minutes (0 = none)
 
         # FANSTATE-derived state
         self.sched_timer_type: int = 0  # 0=none, 1=sched_start, 2=sched_stop
@@ -267,6 +274,9 @@ class Williwaw:
         self.speed = self._control_packet.speed
         self.oscillation = self._control_packet.oscillation
         self.oscillation_speed = self._control_packet.oscillation_speed
+        self.sleep_timer_min = self._control_packet.scheduled_stop_min
+        if self._on_update is not None:
+            self._on_update()
 
     def _apply_fanstate(self, data: bytearray) -> None:
         """Parse 6-byte FANSTATE characteristic: power + active timer."""
@@ -275,6 +285,8 @@ class Williwaw:
         self.fan = data[0]  # 0=off, 1=on
         self.sched_timer_type = data[1]
         self.sched_remaining_s = struct.unpack_from("<I", data, 2)[0]
+        if self._on_update is not None:
+            self._on_update()
 
     def _apply_sensorlist(self, data: bytearray) -> None:
         """Parse temperature sensor readings (10 bytes per sensor)."""
@@ -291,6 +303,8 @@ class Williwaw:
                     "Failed to parse sensor entry at offset %d", i, exc_info=True
                 )
         self.sensors = sensors
+        if self._on_update is not None:
+            self._on_update()
 
 async def discover(timeout: float = 5.0) -> list[BLEDevice]:
     return await BleakScanner.discover(timeout=timeout)

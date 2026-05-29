@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add Williwaw Fan",
+        "description": "Enter the Bluetooth address of your Williwaw fan.\n\nYou can find the address in the Williwaw app under device settings.",
+        "data": {
+          "address": "Bluetooth Address"
+        },
+        "data_description": {
+          "address": "MAC address in the format AA:BB:CC:DD:EE:FF"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Confirm Williwaw Fan",
+        "description": "Add **{name}** to Home Assistant?"
+      }
+    },
+    "abort": {
+      "already_configured": "This Williwaw fan is already configured.",
+      "no_devices_found": "No Williwaw fans were found nearby."
+    }
+  }
+}
