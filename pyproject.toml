@@ -6,11 +6,31 @@ build-backend = "setuptools.build_meta"
 name = "pywilliwaw"
 version = "0.1.0"
 description = "A Python library and CLI to control the Williwaw fan over BLE, reverse-engineered from captured Bluetooth traffic."
+readme = "README.md"
 requires-python = ">=3.10"
 license = {file = "LICENSE"}
+authors = [
+    {name = "Julien Lafaye", email = "jlafaye@gmail.com"},
+]
+keywords = ["ble", "bluetooth", "fan", "williwaw", "smarthome"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Home Automation",
+]
 dependencies = [
     "bleak>=0.22",
 ]
+
+[project.urls]
+Homepage = "https://github.com/jlafaye/pywilliwaw"
+Repository = "https://github.com/jlafaye/pywilliwaw"
+Issues = "https://github.com/jlafaye/pywilliwaw/issues"
 
 [project.scripts]
 williwaw-cli = "pywilliwaw.cli:main"
