@@ -189,18 +189,22 @@ the fan as a **fan entity** (on/off, speed, oscillation), any paired
 temperature sensors as **sensor entities** (temperature + battery), and the
 hardware sleep timer as a **number entity**.
 
-### Installation
+### Installation via HACS (recommended)
+
+1. In Home Assistant, open **HACS → Integrations**.
+2. Click the three-dot menu (⋮) in the top-right corner and choose **Custom repositories**.
+3. Paste `https://github.com/jlafaye/pywilliwaw` and set the category to **Integration**, then click **Add**.
+4. Search for *Williwaw* in HACS, click **Download**, and confirm.
+5. Restart Home Assistant.
+
+HACS will install the `pywilliwaw` Python library automatically — no manual `pip` step needed.
+
+### Manual installation
 
 1. Copy the `custom_components/williwaw/` folder into your Home Assistant
    `config/custom_components/` directory.
-
-2. Install the `pywilliwaw` Python package inside Home Assistant's virtualenv:
-
-   ```bash
-   pip install -e /path/to/williwaw
-   ```
-
-3. Restart Home Assistant.
+2. Restart Home Assistant — the `pywilliwaw` dependency is declared in
+   `manifest.json` and will be installed automatically from PyPI.
 
 ### Adding the device
 
