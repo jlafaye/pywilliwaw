@@ -68,9 +68,11 @@ class Williwaw:
         self,
         device: BLEDevice,
         on_update: Callable[[], None] | None = None,
+        on_disconnect: Callable[[], None] | None = None,
     ):
         self._device = device
-        self._client = BleakClient(device)
+        self._on_disconnect = on_disconnect
+        self._client = BleakClient(device, disconnected_callback=self._on_disconnected)
         self._control_packet: FanControlPacket = FanControlPacket()
         self._on_update = on_update
 
@@ -250,6 +252,12 @@ class Williwaw:
             self._control_packet.with_scheduled_start(minutes).to_bytes(),
             response=True,
         )
+
+    # ── connection callbacks ───────────────────────────────────────────────────
+
+    def _on_disconnected(self, _client: BleakClient) -> None:
+        if self._on_disconnect is not None:
+            self._on_disconnect()
 
     # ── notification handlers ──────────────────────────────────────────────────
 
