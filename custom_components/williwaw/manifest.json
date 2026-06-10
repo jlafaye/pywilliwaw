@@ -3,7 +3,7 @@
   "name": "Williwaw Fan",
   "version": "0.1.0",
   "codeowners": [],
-  "requirements": ["pywilliwaw>=0.1.0"],
+  "requirements": ["pywilliwaw>=1.2.0"],
   "dependencies": ["bluetooth"],
   "bluetooth": [
     {
