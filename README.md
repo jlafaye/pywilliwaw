@@ -184,48 +184,11 @@ Disconnected.
 
 ## Home Assistant integration
 
-A custom integration is included in `custom_components/williwaw/`. It exposes
-the fan as a **fan entity** (on/off, speed, oscillation), any paired
-temperature sensors as **sensor entities** (temperature + battery), and the
-hardware sleep timer as a **number entity**.
-
-### Installation via HACS (recommended)
-
-1. In Home Assistant, open **HACS → Integrations**.
-2. Click the three-dot menu (⋮) in the top-right corner and choose **Custom repositories**.
-3. Paste `https://github.com/jlafaye/pywilliwaw` and set the category to **Integration**, then click **Add**.
-4. Search for *Williwaw* in HACS, click **Download**, and confirm.
-5. Restart Home Assistant.
-
-HACS will install the `pywilliwaw` Python library automatically — no manual `pip` step needed.
-
-### Manual installation
-
-1. Copy the `custom_components/williwaw/` folder into your Home Assistant
-   `config/custom_components/` directory.
-2. Restart Home Assistant — the `pywilliwaw` dependency is declared in
-   `manifest.json` and will be installed automatically from PyPI.
-
-### Adding the device
-
-- **Auto-discovery:** If your Williwaw fan is powered on and in Bluetooth
-  range, Home Assistant will detect it automatically and show a discovery
-  notification. Accept it to add the integration.
-- **Manual setup:** Go to **Settings → Devices & Services → Add Integration**,
-  search for *Williwaw*, and enter the Bluetooth MAC address of your fan
-  (visible in the Williwaw app under device settings).
-
-### Entities
-
-| Entity | Platform | Description |
-|--------|----------|-------------|
-| Fan | `fan` | On/off, speed (1–15 as 1–100 %), oscillation toggle |
-| W Sensor XXYY Temperature | `sensor` | Temperature in °C for each paired sensor |
-| W Sensor XXYY Battery | `sensor` | Battery level (%) for each paired sensor |
-| Sleep Timer | `number` | Hardware sleep timer in minutes (0 = cancel, max 1440) |
-
-Temperature sensors are added dynamically as they are discovered via BLE
-notifications — they appear in HA shortly after the fan connects.
+A companion Home Assistant integration is available at
+[jlafaye/williwaw-ha](https://github.com/jlafaye/williwaw-ha). It exposes the
+fan as a **fan entity** (on/off, speed, oscillation), any paired temperature
+sensors as **sensor entities** (temperature + battery), and the hardware sleep
+timer as a **number entity**.
 
 ---
 
@@ -237,15 +200,6 @@ src/pywilliwaw/
     protocol.py     BLE packet builders and constants
     fan.py          Williwaw class (BLE connection + state)
     cli.py          interactive REPL (williwaw-cli entry point)
-
-custom_components/williwaw/
-    __init__.py     integration setup / teardown
-    manifest.json   HA integration metadata
-    config_flow.py  UI setup flow (auto-discovery + manual)
-    coordinator.py  BLE connection manager, state fan-out
-    fan.py          fan entity
-    sensor.py       temperature + battery sensor entities
-    number.py       sleep timer entity
 ```
 
 ---
